@@ -60,7 +60,10 @@ endif()
 
 add_library(${LIBRARY_NAME} STATIC
   main.cc
+  player.cc
+  internal/video_output.cc
   api/api.cc
+  api/video_frame_adapter.cc
 )
 
 add_dependencies(${LIBRARY_NAME} LIBVLC_EXTRACT)
