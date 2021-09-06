@@ -9,7 +9,6 @@ void main(List<String> args) {
 
   // Create a new player. Provide an ID to handle multiple players.
   Player player = Player(
-    id: 0,
     // Pass commandline VLC arguments.
     commandlineArguments: [],
   );

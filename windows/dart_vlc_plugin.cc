@@ -77,10 +77,13 @@ void DartVlcPlugin::HandleMethodCall(
   if (method_call.method_name() == "PlayerRegisterTexture") {
     flutter::EncodableMap arguments =
         std::get<flutter::EncodableMap>(*method_call.arguments());
-    int32_t player_id =
-        std::get<int>(arguments[flutter::EncodableValue("playerId")]);
+    auto player_id =
+        std::get<int64_t>(arguments[flutter::EncodableValue("playerId")]);
 
     Player* player = g_players->Get(player_id);
+    if (!player) {
+      return result->Error("invalid_id", "No such player");
+    }
 
     int64_t texture_id = -1;
     if (!player->HasVideoOutput()) {

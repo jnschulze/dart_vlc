@@ -50,14 +50,13 @@ class Player extends FFI.Player {
   final ValueNotifier<int?> textureId = ValueNotifier<int?>(null);
 
   Player(
-      {required int id,
-      FFI.VideoDimensions? videoDimensions,
+      {FFI.VideoDimensions? videoDimensions,
       List<String>? commandlineArguments})
       : super(
-            id: id,
             videoDimensions: videoDimensions,
             commandlineArguments: commandlineArguments) {
     () async {
+      print("ID is $id");
       if (Platform.isWindows) {
         textureId.value = await _channel
             .invokeMethod('PlayerRegisterTexture', {'playerId': id});
@@ -99,15 +98,16 @@ abstract class DartVLC {
       final libraryPath = path.join(
           path.dirname(Platform.resolvedExecutable), 'dart_vlc_plugin.dll');
       FFI.DartVLC.initialize(libraryPath);
-    }
-    else if (Platform.isLinux) {
+    } else if (Platform.isLinux) {
       final libraryPath = path.join(path.dirname(Platform.resolvedExecutable),
           'lib', 'libdart_vlc_plugin.so');
       FFI.DartVLC.initialize(libraryPath);
-    }
-    else if(Platform.isMacOS) {
-      final libraryPath = path.join(path.dirname(path.dirname(Platform.resolvedExecutable)),
-          'Frameworks', 'dart_vlc.framework', 'dart_vlc');
+    } else if (Platform.isMacOS) {
+      final libraryPath = path.join(
+          path.dirname(path.dirname(Platform.resolvedExecutable)),
+          'Frameworks',
+          'dart_vlc.framework',
+          'dart_vlc');
       FFI.DartVLC.initialize(libraryPath);
     }
   }

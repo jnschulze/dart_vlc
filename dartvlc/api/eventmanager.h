@@ -32,10 +32,10 @@ DLLEXPORT void InitializeDartApi(Dart_PostCObjectType dart_post_C_object,
   Dart_InitializeApiDL(data);
 }
 
-inline void OnPlayPauseStop(int32_t id, PlayerState* state) {
+inline void OnPlayPauseStop(int64_t id, PlayerState* state) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -59,10 +59,10 @@ inline void OnPlayPauseStop(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnPosition(int32_t id, PlayerState* state) {
+inline void OnPosition(int64_t id, PlayerState* state) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -90,10 +90,10 @@ inline void OnPosition(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnComplete(int32_t id, PlayerState* state) {
+inline void OnComplete(int64_t id, PlayerState* state) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -113,10 +113,10 @@ inline void OnComplete(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnVolume(int32_t id, PlayerState* state) {
+inline void OnVolume(int64_t id, PlayerState* state) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -135,10 +135,10 @@ inline void OnVolume(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnRate(int32_t id, PlayerState* state) {
+inline void OnRate(int64_t id, PlayerState* state) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -157,15 +157,15 @@ inline void OnRate(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnOpen(int32_t id, PlayerState* state) {
+inline void OnOpen(int64_t id, PlayerState* state) {
   const auto& media_items = state->medias()->medias();
 
   auto value_objects = std::unique_ptr<Dart_CObject*[]>(
       new Dart_CObject*[4 + media_items.size() * 2]);
 
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
   value_objects[0] = &id_object;
 
   Dart_CObject type_object;
@@ -205,11 +205,11 @@ inline void OnOpen(int32_t id, PlayerState* state) {
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnVideoDimensions(int32_t id, int32_t video_width,
+inline void OnVideoDimensions(int64_t id, int32_t video_width,
                               int32_t video_height) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;
@@ -233,10 +233,10 @@ inline void OnVideoDimensions(int32_t id, int32_t video_width,
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnVideo(int32_t id, int size, const uint8_t* frame) {
+inline void OnVideo(int64_t id, int size, const uint8_t* frame) {
   Dart_CObject id_object;
-  id_object.type = Dart_CObject_kInt32;
-  id_object.value.as_int32 = id;
+  id_object.type = Dart_CObject_kInt64;
+  id_object.value.as_int64 = id;
 
   Dart_CObject type_object;
   type_object.type = Dart_CObject_kString;

@@ -125,8 +125,7 @@ class Video extends StatefulWidget {
   final bool showTimeLeft;
 
   Video({
-    @Deprecated('playerId is deprecated. Use player instead.') int? playerId,
-    Player? player,
+    required this.player,
     this.width,
     this.height,
     this.fit: BoxFit.contain,
@@ -147,8 +146,7 @@ class Video extends StatefulWidget {
     this.progressBarTextStyle = const TextStyle(),
     this.filterQuality = FilterQuality.low,
     Key? key,
-  })  : player = player ?? players[playerId]! as Player,
-        super(key: key);
+  }) : super(key: key);
 
   _VideoStateBase createState() =>
       Platform.isWindows ? _VideoStateTexture() : _VideoStateFallback();

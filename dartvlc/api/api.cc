@@ -49,13 +49,17 @@ static void DestroyObject(void*, void* peer) { delete peer; }
 extern "C" {
 #endif
 
-void PlayerCreate(int32_t id, int32_t video_width, int32_t video_height,
-                  int32_t commandLineArgumentsCount,
-                  const char** commandLineArguments) {
+int64_t PlayerCreate(int32_t video_width, int32_t video_height,
+                     int32_t commandLineArgumentsCount,
+                     const char** commandLineArguments) {
   std::vector<std::string> args{};
   for (int32_t index = 0; index < commandLineArgumentsCount; index++)
     args.emplace_back(commandLineArguments[index]);
-  Player* player = g_players->Get(id, args);
+  Player* player = g_players->Create(args);
+  if (!player) {
+    return 0;
+  }
+  auto id = player->id();
   if (video_width > 0 && video_height > 0) {
     player->SetVideoWidth(video_width);
     player->SetVideoHeight(video_height);
@@ -90,14 +94,18 @@ void PlayerCreate(int32_t id, int32_t video_width, int32_t video_height,
       [=](int32_t video_width, int32_t video_height) -> void {
         OnVideoDimensions(id, video_width, video_height);
       });
+  return id;
 }
 
-void PlayerDispose(int32_t id) { g_players->Dispose(id); }
+void PlayerDispose(int64_t id) { g_players->Dispose(id); }
 
-void PlayerOpen(int32_t id, bool auto_start, const char** source,
+void PlayerOpen(int64_t id, bool auto_start, const char** source,
                 int32_t source_size) {
   std::vector<std::shared_ptr<Media>> medias{};
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   for (int32_t index = 0; index < 2 * source_size; index += 2) {
     std::shared_ptr<Media> media;
     const char* type = source[index];
@@ -113,76 +121,118 @@ void PlayerOpen(int32_t id, bool auto_start, const char** source,
   player->Open(std::make_shared<Playlist>(medias), auto_start);
 }
 
-void PlayerPlay(int32_t id) {
+void PlayerPlay(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Play();
 }
 
-void PlayerPause(int32_t id) {
+void PlayerPause(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Pause();
 }
 
-void PlayerPlayOrPause(int32_t id) {
+void PlayerPlayOrPause(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->PlayOrPause();
 }
 
-void PlayerStop(int32_t id) {
+void PlayerStop(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Stop();
 }
 
-void PlayerNext(int32_t id) {
+void PlayerNext(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Next();
 }
 
-void PlayerBack(int32_t id) {
+void PlayerBack(int64_t id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Back();
 }
 
-void PlayerJump(int32_t id, int32_t index) {
+void PlayerJump(int64_t id, int32_t index) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Jump(index);
 }
 
-void PlayerSeek(int32_t id, int32_t position) {
+void PlayerSeek(int64_t id, int32_t position) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Seek(position);
 }
 
-void PlayerSetVolume(int32_t id, float volume) {
+void PlayerSetVolume(int64_t id, float volume) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->SetVolume(volume);
 }
 
-void PlayerSetRate(int32_t id, float rate) {
+void PlayerSetRate(int64_t id, float rate) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->SetRate(rate);
 }
 
-void PlayerSetUserAgent(int32_t id, const char* userAgent) {
+void PlayerSetUserAgent(int64_t id, const char* userAgent) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->SetUserAgent(userAgent);
 }
 
-void PlayerSetDevice(int32_t id, const char* device_id,
+void PlayerSetDevice(int64_t id, const char* device_id,
                      const char* device_name) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   Device device(device_id, device_name);
   player->SetDevice(device);
 }
 
-void PlayerSetEqualizer(int32_t id, int32_t equalizer_id) {
+void PlayerSetEqualizer(int64_t id, int32_t equalizer_id) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   Equalizer* equalizer = g_equalizers->Get(equalizer_id);
   player->SetEqualizer(*equalizer);
 }
 
-void PlayerSetPlaylistMode(int32_t id, const char* mode) {
+void PlayerSetPlaylistMode(int64_t id, const char* mode) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   PlaylistMode playlistMode;
   if (strcmp(mode, "PlaylistMode.repeat") == 0)
     playlistMode = PlaylistMode::repeat;
@@ -193,8 +243,11 @@ void PlayerSetPlaylistMode(int32_t id, const char* mode) {
   player->SetPlaylistMode(playlistMode);
 }
 
-void PlayerAdd(int32_t id, const char* type, const char* resource) {
+void PlayerAdd(int64_t id, const char* type, const char* resource) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   std::shared_ptr<Media> media;
   if (strcmp(type, "MediaType.file") == 0)
     media = Media::file(resource, false);
@@ -205,14 +258,20 @@ void PlayerAdd(int32_t id, const char* type, const char* resource) {
   player->Add(media);
 }
 
-void PlayerRemove(int32_t id, int32_t index) {
+void PlayerRemove(int64_t id, int32_t index) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Remove(index);
 }
 
-void PlayerInsert(int32_t id, int32_t index, const char* type,
+void PlayerInsert(int64_t id, int32_t index, const char* type,
                   const char* resource) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   std::shared_ptr<Media> media;
   if (strcmp(type, "MediaType.file") == 0)
     media = Media::file(resource, false);
@@ -223,14 +282,20 @@ void PlayerInsert(int32_t id, int32_t index, const char* type,
   player->Insert(index, media);
 }
 
-void PlayerMove(int32_t id, int32_t initial_index, int32_t final_index) {
+void PlayerMove(int64_t id, int32_t initial_index, int32_t final_index) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->Move(initial_index, final_index);
 }
 
-void PlayerTakeSnapshot(int32_t id, const char* file_path, int32_t width,
+void PlayerTakeSnapshot(int64_t id, const char* file_path, int32_t width,
                         int32_t height) {
   Player* player = g_players->Get(id);
+  if (!player) {
+    return;
+  }
   player->TakeSnapshot(file_path, width, height);
 }
 

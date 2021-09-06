@@ -30,6 +30,9 @@ class Player : public PlayerSetters {
     }
     return false;
   }
+
+  int64_t id() const { return reinterpret_cast<int64_t>(this); }
+
   void OnVideoDimensionsChanged(int32_t width, int32_t height);
   ~Player();
 
@@ -39,23 +42,33 @@ class Player : public PlayerSetters {
 
 class Players {
  public:
-  Player* Get(int32_t id, std::vector<std::string> cmd_arguments = {}) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto [it, added] = players_.try_emplace(id, nullptr);
-    if (added) {
-      it->second = std::make_unique<Player>(cmd_arguments);
+  Player* Create(std::vector<std::string> cmd_arguments = {}) {
+    auto player = std::make_unique<Player>(cmd_arguments);
+    auto ptr = player.get();
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      players_[player->id()] = std::move(player);
     }
-    return it->second.get();
+    return ptr;
   }
 
-  void Dispose(int32_t id) {
+  Player* Get(int64_t id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = players_.find(id);
+    if (it != players_.end()) {
+      return it->second.get();
+    }
+    return nullptr;
+  }
+
+  void Dispose(int64_t id) {
     std::lock_guard<std::mutex> lock(mutex_);
     players_.erase(id);
   }
 
  private:
   std::mutex mutex_;
-  std::map<int32_t, std::unique_ptr<Player>> players_;
+  std::map<int64_t, std::unique_ptr<Player>> players_;
 };
 
 extern std::unique_ptr<Players> g_players;

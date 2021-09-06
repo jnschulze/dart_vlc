@@ -14,17 +14,17 @@ class DartVLCExample extends StatefulWidget {
 }
 
 class DartVLCExampleState extends State<DartVLCExample> {
-  Player player = Player(id: 0);
+  Player player = Player();
   MediaType mediaType = MediaType.file;
-  CurrentState current = new CurrentState();
-  PositionState position = new PositionState();
-  PlaybackState playback = new PlaybackState();
-  GeneralState general = new GeneralState();
-  VideoDimensions videoDimensions = new VideoDimensions(0, 0);
+  CurrentState current = CurrentState();
+  PositionState position = PositionState();
+  PlaybackState playback = PlaybackState();
+  GeneralState general = GeneralState();
+  VideoDimensions videoDimensions = VideoDimensions(0, 0);
   List<Media> medias = <Media>[];
   List<Device> devices = <Device>[];
-  TextEditingController controller = new TextEditingController();
-  TextEditingController metasController = new TextEditingController();
+  TextEditingController controller = TextEditingController();
+  TextEditingController metasController = TextEditingController();
   Media? metasMedia;
 
   @override
@@ -179,10 +179,9 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                             if (this.mediaType ==
                                                 MediaType.file) {
                                               this.medias.add(
-                                                    Media.file(new File(
-                                                        controller.text
-                                                            .replaceAll(
-                                                                '"', ''))),
+                                                    Media.file(File(controller
+                                                        .text
+                                                        .replaceAll('"', ''))),
                                                   );
                                             } else if (this.mediaType ==
                                                 MediaType.network) {
@@ -241,7 +240,7 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                       ElevatedButton(
                                         onPressed: () => this.setState(() {
                                           this.player.open(
-                                                new Playlist(
+                                                Playlist(
                                                     medias: this.medias,
                                                     playlistMode:
                                                         PlaylistMode.single),
@@ -388,7 +387,7 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                 this
                                     .devices
                                     .map(
-                                      (device) => new ListTile(
+                                      (device) => ListTile(
                                         title: Text(
                                           device.name,
                                           style: TextStyle(
@@ -480,8 +479,7 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                       onPressed: () async {
                                         if (this.mediaType == MediaType.file) {
                                           this.metasMedia = Media.file(
-                                              new File(
-                                                  this.metasController.text),
+                                              File(this.metasController.text),
                                               parse: true);
                                         } else if (this.mediaType ==
                                             MediaType.network) {
@@ -693,7 +691,7 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                       const EdgeInsets.symmetric(vertical: 8.0),
                                   children: List.generate(
                                     this.current.medias.length,
-                                    (int index) => new ListTile(
+                                    (int index) => ListTile(
                                       key: Key(index.toString()),
                                       leading: Text(
                                         index.toString(),
