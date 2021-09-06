@@ -67,12 +67,8 @@ class Player extends FFI.Player {
   }
 
   @override
-  void dispose() async {
-    if (Platform.isWindows && textureId.value != null) {
-      await _channel.invokeMethod('PlayerUnregisterTexture', {'playerId': id});
-      textureId.value = null;
-    }
-
+  void dispose() {
+    textureId.value = null;
     super.dispose();
   }
 }

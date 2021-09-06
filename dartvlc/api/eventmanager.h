@@ -12,10 +12,10 @@
 #ifndef API_EVENTMANAGER_H_
 #define API_EVENTMANAGER_H_
 
-#include "base.h"
-#include "player.h"
 #include "api/dartmanager.h"
+#include "base.h"
 #include "dart_api_dl.h"
+#include "player.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -160,7 +160,7 @@ inline void OnRate(int32_t id, PlayerState* state) {
 inline void OnOpen(int32_t id, PlayerState* state) {
   const auto& media_items = state->medias()->medias();
 
-  auto value_objects = std::unique_ptr<Dart_CObject* []>(
+  auto value_objects = std::unique_ptr<Dart_CObject*[]>(
       new Dart_CObject*[4 + media_items.size() * 2]);
 
   Dart_CObject id_object;
@@ -233,7 +233,7 @@ inline void OnVideoDimensions(int32_t id, int32_t video_width,
   g_dart_post_C_object(g_callback_port, &return_object);
 }
 
-inline void OnVideo(int32_t id, int size, uint8_t* frame) {
+inline void OnVideo(int32_t id, int size, const uint8_t* frame) {
   Dart_CObject id_object;
   id_object.type = Dart_CObject_kInt32;
   id_object.value.as_int32 = id;
@@ -245,7 +245,7 @@ inline void OnVideo(int32_t id, int size, uint8_t* frame) {
   Dart_CObject frame_object;
   frame_object.type = Dart_CObject_kTypedData;
   frame_object.value.as_typed_data.type = Dart_TypedData_kUint8;
-  frame_object.value.as_typed_data.values = frame;
+  frame_object.value.as_typed_data.values = const_cast<uint8_t*>(frame);
   frame_object.value.as_typed_data.length = size;
 
   Dart_CObject* value_objects[] = {&id_object, &type_object, &frame_object};

@@ -18,6 +18,15 @@
 
 namespace {
 
+VideoOutlet* GetOutlet(const Player* player) {
+  auto output = dynamic_cast<PixelBufferOutput*>(player->GetVideoOutput());
+  if (!output) {
+    return nullptr;
+  }
+
+  return dynamic_cast<VideoOutlet*>(output->output_delegate());
+}
+
 class DartVlcPlugin : public flutter::Plugin {
  public:
   static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
@@ -39,7 +48,6 @@ class DartVlcPlugin : public flutter::Plugin {
 
   flutter::TextureRegistrar* texture_registrar_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> channel_;
-  std::unordered_map<int, std::unique_ptr<VideoOutlet>> outlets_;
 };
 
 void DartVlcPlugin::RegisterWithRegistrar(
@@ -72,37 +80,22 @@ void DartVlcPlugin::HandleMethodCall(
     int32_t player_id =
         std::get<int>(arguments[flutter::EncodableValue("playerId")]);
 
-    auto [it, added] = outlets_.try_emplace(player_id, nullptr);
-    if (added) {
-      it->second = std::make_unique<VideoOutlet>(texture_registrar_);
-
-      Player* player = g_players->Get(player_id);
-      player->OnVideo([outlet_ptr = it->second.get()](uint8_t* frame,
-                                                      int32_t width,
-                                                      int32_t height) -> void {
-        outlet_ptr->OnVideo(frame, width, height);
-      });
-    }
-
-    return result->Success(flutter::EncodableValue(it->second->texture_id()));
-
-  } else if (method_call.method_name() == "PlayerUnregisterTexture") {
-    flutter::EncodableMap arguments =
-        std::get<flutter::EncodableMap>(*method_call.arguments());
-    int player_id =
-        std::get<int>(arguments[flutter::EncodableValue("playerId")]);
-    if (outlets_.find(player_id) == outlets_.end()) {
-      return result->Error("-2", "Texture was not found.");
-    }
-
-    // The callback must be unregistered
-    // before destroying the outlet.
     Player* player = g_players->Get(player_id);
-    player->OnVideo(nullptr);
 
-    outlets_.erase(player_id);
+    int64_t texture_id = -1;
+    if (!player->HasVideoOutput()) {
+      auto outlet = std::make_unique<VideoOutlet>(texture_registrar_);
+      texture_id = outlet->texture_id();
+      player->SetVideoOutput(std::make_unique<PixelBufferOutput>(
+          std::move(outlet), PixelFormat::kFormatRGBA));
+    } else {
+      auto outlet = GetOutlet(player);
+      if (outlet) {
+        texture_id = outlet->texture_id();
+      }
+    }
 
-    result->Success(flutter::EncodableValue(nullptr));
+    return result->Success(flutter::EncodableValue(texture_id));
   } else {
     result->NotImplemented();
   }

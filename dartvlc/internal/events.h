@@ -9,9 +9,11 @@
  * GNU Lesser General Public License v2.1
  */
 
+#include <iostream>
+
 #include "internal/getters.h"
 
-typedef std::function<void(uint8_t*, int32_t, int32_t)> VideoFrameCallback;
+typedef std::function<void(int32_t, int32_t)> VideoDimensionsChangedCallback;
 
 class PlayerEvents : public PlayerGetters {
  public:
@@ -27,10 +29,8 @@ class PlayerEvents : public PlayerGetters {
         std::bind(&PlayerEvents::OnPlayCallback, this));
   }
 
-  void OnVideoDimensions(std::function<void(int32_t, int32_t)> callback) {
+  void OnVideoDimensions(VideoDimensionsChangedCallback callback) {
     video_dimension_callback_ = callback;
-    vlc_media_player_.eventManager().onPlaying(
-        std::bind(&PlayerEvents::OnVideoDimensionsCallback, this));
   }
 
   void OnPause(std::function<void()> callback) {
@@ -75,8 +75,6 @@ class PlayerEvents : public PlayerGetters {
     playlist_callback_ = callback;
   }
 
-  void OnVideo(VideoFrameCallback callback) { video_callback_ = callback; }
-
  protected:
   std::function<void()> playlist_callback_ = [=]() -> void {};
 
@@ -113,49 +111,7 @@ class PlayerEvents : public PlayerGetters {
     open_callback_(*vlc_media_ptr.get());
   }
 
-  std::function<void(int32_t, int32_t)> video_dimension_callback_ = [=](
-      int32_t, int32_t) -> void {};
-
-  void OnVideoDimensionsCallback() {
-    int32_t video_width = 0;
-    int32_t video_height = 0;
-    if (preferred_video_width_.has_value() &&
-        preferred_video_width_.has_value()) {
-      video_width = preferred_video_width_.value_or(0);
-      video_height = preferred_video_height_.value_or(0);
-    } else {
-      uint32_t px = 0, py = 0;
-      libvlc_video_get_size(vlc_media_player_.get(), 0, &px, &py);
-      video_width = static_cast<int32_t>(px);
-      video_height = static_cast<int32_t>(py);
-    }
-    video_dimension_callback_(video_width, video_height);
-    if (video_width_ != video_width || video_height_ != video_height) {
-      video_width_ = video_width;
-      video_height_ = video_height;
-      int32_t pitch = video_width * 4;
-      int32_t size = video_height * pitch;
-      video_frame_buffer_.reset(new uint8_t[size]);
-      vlc_media_player_.setVideoCallbacks(
-          std::bind(&PlayerEvents::OnVideoLockCallback, this,
-                    std::placeholders::_1),
-          nullptr, std::bind(&PlayerEvents::OnVideoPictureCallback, this,
-                             std::placeholders::_1));
-      vlc_media_player_.setVideoFormatCallbacks(
-          [=](char* chroma, uint32_t* w, uint32_t* h, uint32_t* p,
-              uint32_t* l) -> int32_t {
-            strcpy(chroma, "RGBA");
-            *w = video_width;
-            *h = video_height;
-            *p = pitch;
-            *l = video_height;
-            return 1;
-          },
-          nullptr);
-      vlc_media_player_.setVideoFormat("RGBA", video_width, video_height,
-                                       pitch);
-    }
-  }
+  VideoDimensionsChangedCallback video_dimension_callback_;
 
   std::function<void()> play_callback_ = [=]() -> void {};
 
@@ -192,8 +148,8 @@ class PlayerEvents : public PlayerGetters {
     stop_callback_();
   }
 
-  std::function<void(int32_t)> position_callback_ = [=](
-      int32_t position) -> void {};
+  std::function<void(int32_t)> position_callback_ =
+      [=](int32_t position) -> void {};
 
   void OnPositionCallback(float relative_position) {
     state()->is_playing_ = vlc_media_player_.isPlaying();
@@ -235,17 +191,4 @@ class PlayerEvents : public PlayerGetters {
   std::function<void(float)> volume_callback_ = [=](float) -> void {};
 
   std::function<void(float)> rate_callback_ = [=](float) -> void {};
-
-  VideoFrameCallback video_callback_;
-
-  void* OnVideoLockCallback(void** planes) {
-    planes[0] = static_cast<void*>(video_frame_buffer_.get());
-    return nullptr;
-  }
-
-  void OnVideoPictureCallback(void* picture) {
-    if (video_callback_) {
-      video_callback_(video_frame_buffer_.get(), video_width_, video_height_);
-    }
-  }
 };

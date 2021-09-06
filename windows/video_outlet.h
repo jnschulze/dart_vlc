@@ -5,24 +5,37 @@
 #include <flutter/plugin_registrar_windows.h>
 #include <flutter/standard_method_codec.h>
 
+#include <iostream>
+#include <list>
 #include <mutex>
 
-class VideoOutlet {
+#include "internal/video_output.h"
+
+struct FrameBuffer;
+
+class VideoOutlet : public PixelBufferOutputDelegate {
  public:
   VideoOutlet(flutter::TextureRegistrar* texture_registrar);
 
   int64_t texture_id() const { return texture_id_; }
 
-  void OnVideo(uint8_t* buffer, int32_t width, int32_t height);
+  virtual void* LockBuffer(void** buffer,
+                           const VideoDimensions& dimensions) override;
+  virtual void UnlockBuffer(void* user_data) override;
+  virtual void PresentBuffer(const VideoDimensions& dimensions, void* user_data) override;
 
-  ~VideoOutlet();
+  virtual ~VideoOutlet();
 
  private:
-  FlutterDesktopPixelBuffer flutter_pixel_buffer_{};
+  std::unique_ptr<FrameBuffer> current_buffer_;
+  std::unique_ptr<FrameBuffer> last_buffer_;
+
   flutter::TextureRegistrar* texture_registrar_ = nullptr;
   std::unique_ptr<flutter::TextureVariant> texture_ = nullptr;
   int64_t texture_id_;
   mutable std::mutex mutex_;
+
+  const FlutterDesktopPixelBuffer* CopyPixelBuffer(size_t width, size_t height);
 };
 
 #endif
