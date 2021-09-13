@@ -13,6 +13,7 @@ typedef std::function<void(const uint8_t*, const VideoDimensions&)>
 class VideoFrameAdapter : public PixelBufferOutputDelegate {
  public:
   VideoFrameAdapter() = default;
+  virtual ~VideoFrameAdapter() {}
 
   void OnFrameArrived(VideoFrameCallback callback) {
     frame_callback_ = callback;
@@ -24,8 +25,6 @@ class VideoFrameAdapter : public PixelBufferOutputDelegate {
   // |PixelBufferOutputDelegate|
   virtual void PresentBuffer(const VideoDimensions& dimensions,
                              void* user_data) override;
-
-  virtual ~VideoFrameAdapter();
 
  private:
   std::mutex mutex_;

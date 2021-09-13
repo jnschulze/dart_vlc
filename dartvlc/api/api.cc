@@ -18,6 +18,7 @@
 #include "device.h"
 #include "equalizer.h"
 #include "player.h"
+#include "player_registry.h"
 #include "record.h"
 #include "video_frame_adapter.h"
 
@@ -64,18 +65,37 @@ int64_t PlayerCreate(int32_t video_width, int32_t video_height,
     player->SetVideoWidth(video_width);
     player->SetVideoHeight(video_height);
   }
-  player->OnPlay([=]() -> void { OnPlayPauseStop(id, player->state()); });
-  player->OnPause([=]() -> void { OnPlayPauseStop(id, player->state()); });
-  player->OnStop([=]() -> void {
-    OnPlayPauseStop(id, player->state());
-    OnPosition(id, player->state());
+
+  player->OnOpen([=](std::shared_ptr<Media> media, int32_t index) {
+    std::cerr << "CURRENT MEDIA CHANGED" << std::endl;
+
+    std::cerr << "MEDIA LOCATION " << media->location() << std::endl;
+
+    OnPlaylistUpdated(id, player->playlist(), true, index);
   });
-  player->OnComplete([=]() -> void { OnComplete(id, player->state()); });
-  player->OnVolume([=](float) -> void { OnVolume(id, player->state()); });
-  player->OnRate([=](float) -> void { OnRate(id, player->state()); });
-  player->OnPosition([=](int32_t) -> void { OnPosition(id, player->state()); });
-  player->OnOpen([=](VLC::Media) -> void { OnOpen(id, player->state()); });
-  player->OnPlaylist([=]() -> void { OnOpen(id, player->state()); });
+
+  player->OnPlaybackStateChanged([=](PlaybackState state) {
+    OnPlaybackStateChanged(id, state, true);
+    if (state == PlaybackState::kStopped) {
+      auto position = player->position();
+      OnPositionChanged(id, position, player->duration());
+    }
+  });
+
+  player->OnPosition([=](double position) -> void {
+    OnPositionChanged(id, position, player->duration());
+  });
+  player->OnRate([=](double rate) -> void { OnRateChanged(id, rate); });
+  player->OnVolume([=](float volume) -> void { OnVolumeChanged(id, volume); });
+
+  // ??
+  // player->OnPlaylist([=]() -> void { OnOpen(id, player->state()); });
+
+  player->OnVideoDimensions(
+      [=](int32_t video_width, int32_t video_height) -> void {
+        OnVideoDimensions(id, video_width, video_height);
+      });
+
 #ifdef _WIN32
 /* Windows: Texture & flutter::TextureRegistrar */
 #else
@@ -84,16 +104,13 @@ int64_t PlayerCreate(int32_t video_width, int32_t video_height,
   auto adapter = std::make_unique<VideoFrameAdapter>();
   adapter->OnFrameArrived(
       [=](const uint8_t* buffer, const VideoDimensions& dimensions) {
-        OnVideo(id, dimensions.bytes_per_row * dimensions.height, buffer);
+        OnVideo(id, buffer, dimensions.bytes_per_row * dimensions.height,
+                dimensions, PixelFormat::kFormatRGBA);
       });
 
   player->SetVideoOutput(std::make_unique<PixelBufferOutput>(
       std::move(adapter), PixelFormat::kFormatRGBA));
 #endif
-  player->OnVideoDimensions(
-      [=](int32_t video_width, int32_t video_height) -> void {
-        OnVideoDimensions(id, video_width, video_height);
-      });
   return id;
 }
 
@@ -101,122 +118,70 @@ void PlayerDispose(int64_t id) { g_players->Dispose(id); }
 
 void PlayerOpen(int64_t id, bool auto_start, const char** source,
                 int32_t source_size) {
-  std::vector<std::shared_ptr<Media>> medias{};
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  for (int32_t index = 0; index < 2 * source_size; index += 2) {
-    std::shared_ptr<Media> media;
-    const char* type = source[index];
-    const char* resource = source[index + 1];
-    if (strcmp(type, "MediaType.file") == 0)
-      media = Media::file(resource, false);
-    else if (strcmp(type, "MediaType.network") == 0)
-      media = Media::network(resource, false);
-    else
-      media = Media::directShow(resource);
-    medias.emplace_back(media);
-  }
-  player->Open(std::make_shared<Playlist>(medias), auto_start);
+  g_players->Invoke(id, [=](Player* player) {
+    auto playlist = player->CreatePlaylist();
+    for (int32_t index = 0; index < 2 * source_size; index += 2) {
+      std::shared_ptr<Media> media;
+      const char* type = source[index];
+      const char* resource = source[index + 1];
+      playlist->Add(Media::create(type, resource));
+    }
+
+    player->Open(std::move(playlist), auto_start);
+  });
 }
 
 void PlayerPlay(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Play();
+  g_players->Invoke(id, [](Player* player) { player->Play(); });
 }
 
 void PlayerPause(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Pause();
+  g_players->Invoke(id, [](Player* player) { player->Pause(); });
 }
 
 void PlayerPlayOrPause(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->PlayOrPause();
+  g_players->Invoke(id, [](Player* player) { player->PlayOrPause(); });
 }
 
 void PlayerStop(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Stop();
+  g_players->Invoke(id, [](Player* player) { player->Stop(); });
 }
 
 void PlayerNext(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Next();
+  g_players->Invoke(id, [](Player* player) { player->Next(); });
 }
 
 void PlayerBack(int64_t id) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Back();
+  g_players->Invoke(id, [](Player* player) { player->Back(); });
 }
 
 void PlayerJump(int64_t id, int32_t index) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Jump(index);
+  g_players->Invoke(id, [=](Player* player) { player->Jump(index); });
 }
 
 void PlayerSeek(int64_t id, int32_t position) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->Seek(position);
+  g_players->Invoke(id, [=](Player* player) { player->Seek(position); });
 }
 
 void PlayerSetVolume(int64_t id, float volume) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->SetVolume(volume);
+  g_players->Invoke(id, [=](Player* player) { player->SetVolume(volume); });
 }
 
 void PlayerSetRate(int64_t id, float rate) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->SetRate(rate);
+  g_players->Invoke(id, [=](Player* player) { player->SetRate(rate); });
 }
 
-void PlayerSetUserAgent(int64_t id, const char* userAgent) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  player->SetUserAgent(userAgent);
+void PlayerSetUserAgent(int64_t id, const char* user_agent) {
+  g_players->Invoke(id,
+                    [=](Player* player) { player->SetUserAgent(user_agent); });
 }
 
 void PlayerSetDevice(int64_t id, const char* device_id,
                      const char* device_name) {
-  Player* player = g_players->Get(id);
-  if (!player) {
-    return;
-  }
-  Device device(device_id, device_name);
-  player->SetDevice(device);
+  g_players->Invoke(id, [=](Player* player) {
+    Device device(device_id, device_name);
+    player->SetAudioDevice(device);
+  });
 }
 
 void PlayerSetEqualizer(int64_t id, int32_t equalizer_id) {
@@ -244,50 +209,64 @@ void PlayerSetPlaylistMode(int64_t id, const char* mode) {
 }
 
 void PlayerAdd(int64_t id, const char* type, const char* resource) {
+  std::cerr << "PL ADD" << std::endl;
+
   Player* player = g_players->Get(id);
   if (!player) {
     return;
   }
-  std::shared_ptr<Media> media;
-  if (strcmp(type, "MediaType.file") == 0)
-    media = Media::file(resource, false);
-  else if (strcmp(type, "MediaType.network") == 0)
-    media = Media::network(resource, false);
-  else
-    media = Media::directShow(resource);
-  player->Add(media);
+
+  auto playlist = player->playlist();
+  if (!playlist) {
+    return;
+  }
+
+  auto media = Media::create(type, resource);
+  playlist->Add(std::move(media));
 }
 
 void PlayerRemove(int64_t id, int32_t index) {
+  std::cerr << "PL REMOVE" << std::endl;
+
   Player* player = g_players->Get(id);
   if (!player) {
     return;
   }
-  player->Remove(index);
+  auto playlist = player->playlist();
+  if (!playlist) {
+    return;
+  }
+  playlist->Remove(index);
 }
 
 void PlayerInsert(int64_t id, int32_t index, const char* type,
                   const char* resource) {
+  std::cerr << "PL INSERT" << std::endl;
+
   Player* player = g_players->Get(id);
   if (!player) {
     return;
   }
-  std::shared_ptr<Media> media;
-  if (strcmp(type, "MediaType.file") == 0)
-    media = Media::file(resource, false);
-  else if (strcmp(type, "MediaType.network") == 0)
-    media = Media::network(resource, false);
-  else
-    media = Media::directShow(resource);
-  player->Insert(index, media);
+  auto playlist = player->playlist();
+  if (!playlist) {
+    return;
+  }
+  auto media = Media::create(type, resource);
+  playlist->Insert(index, std::move(media));
 }
 
 void PlayerMove(int64_t id, int32_t initial_index, int32_t final_index) {
+  std::cerr << "PL MOVE" << std::endl;
+
   Player* player = g_players->Get(id);
   if (!player) {
     return;
   }
-  player->Move(initial_index, final_index);
+  auto playlist = player->playlist();
+  if (!playlist) {
+    return;
+  }
+  playlist->Move(initial_index, final_index);
 }
 
 void PlayerTakeSnapshot(int64_t id, const char* file_path, int32_t width,

@@ -48,7 +48,7 @@ class ControlState extends State<Control> with SingleTickerProviderStateMixin {
   bool _hideControls = true;
   bool _displayTapped = false;
   Timer? _hideTimer;
-  late StreamSubscription<PlaybackState> playPauseStream;
+  late StreamSubscription playPauseStream;
   late AnimationController playPauseController;
 
   Player get player => widget.player;
@@ -66,6 +66,7 @@ class ControlState extends State<Control> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     playPauseStream.cancel();
+    playPauseController.dispose();
     super.dispose();
   }
 
@@ -190,8 +191,7 @@ class ControlState extends State<Control> with SingleTickerProviderStateMixin {
                               icon: Icon(Icons.replay_10),
                               onPressed: () {
                                 int positionInMilliseconds =
-                                    player.position.position?.inMilliseconds ??
-                                        0;
+                                    player.position.position.inMilliseconds;
                                 if (!(positionInMilliseconds - 10000)
                                     .isNegative)
                                   positionInMilliseconds -= 10000;
@@ -223,11 +223,9 @@ class ControlState extends State<Control> with SingleTickerProviderStateMixin {
                               icon: Icon(Icons.forward_10),
                               onPressed: () {
                                 int durationInMilliseconds =
-                                    player.position.duration?.inMilliseconds ??
-                                        0;
+                                    player.position.duration.inMilliseconds;
                                 int positionInMilliseconds =
-                                    player.position.position?.inMilliseconds ??
-                                        1;
+                                    player.position.position.inMilliseconds;
                                 if ((positionInMilliseconds + 10000) <=
                                     durationInMilliseconds) {
                                   positionInMilliseconds += 10000;

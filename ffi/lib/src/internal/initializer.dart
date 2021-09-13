@@ -20,7 +20,9 @@ class DartVLC {
       InitializeDartApiDart initializeDartApi = dynamicLibrary
           .lookup<NativeFunction<InitializeDartApiCXX>>('InitializeDartApi')
           .asFunction();
-      initializeDartApi(NativeApi.postCObject, receiver.sendPort.nativePort,
+      initializeDartApi(
+          NativeApi.postCObject,
+          PlatformEventProxy().receiver.sendPort.nativePort,
           NativeApi.initializeApiDLData);
       isInitialized = true;
     }

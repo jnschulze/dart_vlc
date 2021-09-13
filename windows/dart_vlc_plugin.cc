@@ -13,7 +13,7 @@
 
 #include <unordered_map>
 
-#include "player.h"
+#include "player_registry.h"
 #include "video_outlet.h"
 
 namespace {

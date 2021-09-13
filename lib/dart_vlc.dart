@@ -10,13 +10,11 @@
 
 // ignore_for_file: implementation_imports
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 
 import 'package:dart_vlc/src/widgets/video.dart';
-import 'package:dart_vlc_ffi/src/internal/ffi.dart' as FFI;
 import 'package:dart_vlc_ffi/dart_vlc_ffi.dart' as FFI;
 export 'package:dart_vlc_ffi/dart_vlc_ffi.dart' hide DartVLC, Player;
 export 'package:dart_vlc/src/widgets/video.dart';
@@ -27,10 +25,9 @@ final MethodChannel _channel = MethodChannel('dart_vlc');
 /// A [Player] to open & play a [Media] or [Playlist] from file, network or asset.
 ///
 /// Use [Player] constructor to create a new instance of a [Player].
-/// Provide a unique [id] while instanciating.
 ///
 /// ```dart
-/// Player player = new Player(id: 0);
+/// Player player = new Player();
 /// ```
 ///
 /// By default, [Video] widget will adapt to the size of the currently playing video itself.
@@ -38,8 +35,7 @@ final MethodChannel _channel = MethodChannel('dart_vlc');
 /// then you can pass [videoDimensions] argument to override the frame size as follows.
 ///
 /// ```dart
-/// Player player = new Player(
-///   id: 0,
+/// Player player = Player(
 ///   videoDimensions: const VideoDimensions(480, 360)
 /// );
 /// ```
@@ -56,8 +52,7 @@ class Player extends FFI.Player {
             videoDimensions: videoDimensions,
             commandlineArguments: commandlineArguments) {
     () async {
-      print("ID is $id");
-      if (Platform.isWindows) {
+      if (hasTextureSupport) {
         textureId.value = await _channel
             .invokeMethod('PlayerRegisterTexture', {'playerId': id});
       }
@@ -82,18 +77,6 @@ class Player extends FFI.Player {
 ///
 abstract class DartVLC {
   static void initialize() {
-    FFI.videoFrameCallback = (int playerId, Uint8List videoFrame) {
-      if (videoStreamControllers[playerId] != null &&
-          FFI.players[playerId] != null) {
-        if (!videoStreamControllers[playerId]!.isClosed) {
-          videoStreamControllers[playerId]!.add(new VideoFrame(
-              playerId: playerId,
-              videoWidth: FFI.players[playerId]!.videoDimensions.width,
-              videoHeight: FFI.players[playerId]!.videoDimensions.height,
-              byteArray: videoFrame));
-        }
-      }
-    };
     if (Platform.isWindows) {
       final libraryPath = path.join(
           path.dirname(Platform.resolvedExecutable), 'dart_vlc_plugin.dll');

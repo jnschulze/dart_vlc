@@ -16,11 +16,11 @@ class DartVLCExample extends StatefulWidget {
 class DartVLCExampleState extends State<DartVLCExample> {
   Player player = Player();
   MediaType mediaType = MediaType.file;
-  CurrentState current = CurrentState();
+  CurrentMediaState current = CurrentMediaState();
   PositionState position = PositionState();
-  PlaybackState playback = PlaybackState();
+  PlaybackStatus playback = PlaybackStatus();
   GeneralState general = GeneralState();
-  VideoDimensions videoDimensions = VideoDimensions(0, 0);
+  VideoDimensions videoDimensions = VideoDimensions();
   List<Media> medias = <Media>[];
   List<Device> devices = <Device>[];
   TextEditingController controller = TextEditingController();
@@ -31,7 +31,7 @@ class DartVLCExampleState extends State<DartVLCExample> {
   void initState() {
     super.initState();
     if (this.mounted) {
-      this.player.currentStream.listen((current) {
+      this.player.currentMediaStream.listen((current) {
         this.setState(() => this.current = current);
       });
       this.player.positionStream.listen((position) {
@@ -293,19 +293,9 @@ class DartVLCExampleState extends State<DartVLCExample> {
                                 color: Colors.transparent,
                               ),
                               Slider(
-                                  min: 0,
-                                  max: this
-                                          .position
-                                          .duration
-                                          ?.inMilliseconds
-                                          .toDouble() ??
-                                      1.0,
-                                  value: this
-                                          .position
-                                          .position
-                                          ?.inMilliseconds
-                                          .toDouble() ??
-                                      0.0,
+                                  min: 0.0,
+                                  max: 1.0,
+                                  value: position.relativePosition,
                                   onChanged: (double position) => this
                                       .player
                                       .seek(Duration(

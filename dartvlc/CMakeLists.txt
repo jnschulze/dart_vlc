@@ -62,6 +62,8 @@ add_library(${LIBRARY_NAME} STATIC
   main.cc
   player.cc
   internal/video_output.cc
+  internal/player_impl.cc
+  internal/playlist_impl.cc
   api/api.cc
   api/video_frame_adapter.cc
 )

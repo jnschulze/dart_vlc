@@ -1,7 +1,5 @@
 import 'dart:ffi';
-import 'dart:io';
 import 'dart:isolate';
-import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'package:dart_vlc_ffi/src/internal/dynamiclibrary.dart';
 import 'package:dart_vlc_ffi/src/internal/typedefs/player.dart';
@@ -12,9 +10,45 @@ import 'package:dart_vlc_ffi/src/internal/typedefs/record.dart';
 import 'package:dart_vlc_ffi/src/internal/typedefs/broadcast.dart';
 import 'package:dart_vlc_ffi/src/internal/typedefs/chromecast.dart';
 
-/// NOTE: Here for sending event callbacks.
-import 'package:dart_vlc_ffi/src/player.dart';
-import 'package:dart_vlc_ffi/src/mediaSource/media.dart';
+enum EventKind {
+  unknown,
+  playlistUpdated,
+  playbackStateChanged,
+  positionChanged,
+  rateChanged,
+  volumeChanged,
+  videoDimensionsChanged,
+  videoFrameAvailable
+}
+
+typedef EventCallback = void Function(EventKind event, dynamic data);
+
+class PlatformEventProxy {
+  final ReceivePort receiver = ReceivePort();
+  final Map<int, EventCallback> _callbacks = Map<int, EventCallback>();
+  static final PlatformEventProxy _instance = PlatformEventProxy._create();
+
+  PlatformEventProxy._create() {
+    receiver.asBroadcastStream().listen((event) {
+      final args = event as List<dynamic>;
+      final id = args[0];
+      final kind = EventKind.values[args[1]];
+      _callbacks[id]?.call(kind, args[2]);
+    });
+  }
+
+  factory PlatformEventProxy() {
+    return _instance;
+  }
+
+  void register(int id, EventCallback callback) {
+    _callbacks[id] = callback;
+  }
+
+  void unregister(int id) {
+    _callbacks.remove(id);
+  }
+}
 
 abstract class PlayerFFI {
   static final PlayerCreateDart create = dynamicLibrary
@@ -179,99 +213,6 @@ abstract class EqualizerFFI {
 }
 
 bool isInitialized = false;
-void Function(int id, Uint8List frame) videoFrameCallback = (_, __) {};
-final ReceivePort receiver = new ReceivePort()
-  ..asBroadcastStream()
-  ..listen((event) {
-    int id = event[0];
-    String type = event[1];
-    switch (type) {
-      case 'playbackEvent':
-        {
-          players[id]!.playback.isPlaying = event[2];
-          players[id]!.playback.isSeekable = event[3];
-          players[id]!.playback.isCompleted = false;
-          if (!players[id]!.playbackController.isClosed)
-            players[id]!.playbackController.add(players[id]!.playback);
-          break;
-        }
-      case 'positionEvent':
-        {
-          players[id]!.position.position = Duration(milliseconds: event[3]);
-          players[id]!.position.duration = Duration(milliseconds: event[4]);
-          if (!players[id]!.positionController.isClosed)
-            players[id]!.positionController.add(players[id]!.position);
-          break;
-        }
-      case 'completeEvent':
-        {
-          players[id]!.playback.isCompleted = event[2];
-          if (!players[id]!.playbackController.isClosed)
-            players[id]!.playbackController.add(players[id]!.playback);
-          break;
-        }
-      case 'volumeEvent':
-        {
-          players[id]!.general.volume = event[2];
-          if (!players[id]!.generalController.isClosed)
-            players[id]!.generalController.add(players[id]!.general);
-          break;
-        }
-      case 'rateEvent':
-        {
-          players[id]!.general.rate = event[2];
-          if (!players[id]!.generalController.isClosed)
-            players[id]!.generalController.add(players[id]!.general);
-          break;
-        }
-      case 'openEvent':
-        {
-          players[id]!.current.index = event[2];
-          players[id]!.current.isPlaylist = event[3];
-          List<Media> medias = [];
-          for (int index = 4; index < event.length; index += 2) {
-            switch (event[index]) {
-              case 'MediaType.file':
-                {
-                  medias.add(Media.file(File(event[index + 1])));
-                  break;
-                }
-              case 'MediaType.network':
-                {
-                  medias.add(Media.network(Uri.parse(event[index + 1])));
-                  break;
-                }
-              case 'MediaType.directShow':
-                {
-                  medias.add(Media.directShow(rawUrl: event[index + 1]));
-                  break;
-                }
-            }
-          }
-          players[id]!.current.medias = medias;
-          players[id]!.current.media = medias[players[id]!.current.index!];
-          if (!players[id]!.currentController.isClosed)
-            players[id]!.currentController.add(players[id]!.current);
-          break;
-        }
-      case 'videoDimensionsEvent':
-        {
-          players[id]!.videoDimensions = VideoDimensions(event[2], event[3]);
-          if (!players[id]!.videoDimensionsController.isClosed)
-            players[id]!
-                .videoDimensionsController
-                .add(players[id]!.videoDimensions);
-          break;
-        }
-      case 'videoEvent':
-        {
-          videoFrameCallback(id, event[2]);
-          break;
-        }
-      default:
-        break;
-    }
-  });
 
 extension NativeTypes on List<String> {
   Pointer<Pointer<Utf8>> toNativeUtf8Array() {

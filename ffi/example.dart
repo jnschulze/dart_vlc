@@ -7,7 +7,7 @@ void main(List<String> args) {
   // Initialize the library.
   DartVLC.initialize(dynamicLibraryPath);
 
-  // Create a new player. Provide an ID to handle multiple players.
+  // Create a new player.
   Player player = Player(
     // Pass commandline VLC arguments.
     commandlineArguments: [],
@@ -30,7 +30,7 @@ void main(List<String> args) {
     print('Duration of the player is ${event.duration}');
   });
 
-  player.currentStream.listen((event) {
+  player.currentMediaStream.listen((event) {
     // Index of the currently playing media.
     print('Current media index of the player is ${event.index}');
     // Currently playing media.

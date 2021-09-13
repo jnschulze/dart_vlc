@@ -43,7 +43,7 @@ const FlutterDesktopPixelBuffer* VideoOutlet::CopyPixelBuffer(size_t width,
 
 void* VideoOutlet::LockBuffer(void** buffer,
                               const VideoDimensions& dimensions) {
-  assert(dimensions.bytes_per_row * dimensions.width * 4);
+  assert(dimensions.bytes_per_row == dimensions.width * 4);
   size_t required_size = dimensions.bytes_per_row * dimensions.height;
 
   {

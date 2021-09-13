@@ -15,62 +15,80 @@
 #include <memory>
 #include <mutex>
 
-#include "internal/setters.h"
+#include "internal/events.h"
 #include "internal/video_output.h"
 
-class Player : public PlayerSetters {
+class Player : public PlayerSetters, public PlayerGetters, public PlayerEvents {
  public:
   Player(const std::vector<std::string>& cmd_arguments);
+  ~Player();
 
   void SetVideoOutput(std::unique_ptr<VideoOutput> output);
-  VideoOutput* GetVideoOutput() const { return video_output_.get(); }
-  bool HasVideoOutput() {
-    if (video_output_) {
-      return true;
-    }
-    return false;
-  }
+  VideoOutput* GetVideoOutput() const;
+  bool HasVideoOutput() const { return GetVideoOutput() != nullptr; }
 
   int64_t id() const { return reinterpret_cast<int64_t>(this); }
 
+  /// Events handlers
+
   void OnVideoDimensionsChanged(int32_t width, int32_t height);
-  ~Player();
+  void OnOpen(OpenCallback callback) override;
+  void OnVideoDimensions(VideoDimensionsChangedCallback callback) override;
+  // void OnPlaybackStateChanged(PlaybackStateChangedCallback callback)
+  // override;
+
+  void OnPosition(std::function<void(double)> callback) override;
+  void OnSeekable(std::function<void(bool)> callback) override;
+  void OnComplete(std::function<void()> callback) override;
+  void OnVolume(std::function<void(float)> callback) override;
+  void OnRate(std::function<void(float)> callback) override;
+  void OnPlaylist(std::function<void()> callback) override;
+  void OnPlaybackStateChanged(PlaybackStateChangedCallback callback) override;
+
+  // Getters
+  // int32_t video_width() override;
+  // int32_t video_height() override;
+  // PlayerState* state() override;
+  int32_t duration() override;
+  double position() override;
+  float volume() override;
+  float rate() override;
+  PlaybackState playback_state() override;
+
+  std::unique_ptr<Playlist> CreatePlaylist();
+  Playlist* playlist() const;
+
+  /// Setters
+  void Open(std::shared_ptr<Playlist> media_source,
+            bool auto_start = true) override;
+  void Play() override;
+  void Pause() override;
+  void PlayOrPause() override;
+  void Stop() override;
+  void Next() override;
+  void Back() override;
+  void Jump(int32_t index) override;
+  void Seek(int32_t position) override;
+  void SetVolume(float volume) override;
+  void SetRate(float rate) override;
+  void SetAudioDevice(const Device& device) override;
+  void SetPlaylistMode(PlaylistMode mode) override;
+  void SetEqualizer(Equalizer equalizer) override;
+  void SetUserAgent(std::string userAgent) override;
+  /*
+  void Add(std::shared_ptr<Media> media) override;
+  void Remove(int32_t index) override;
+  void Insert(int32_t index, std::shared_ptr<Media> media) override;
+  void Move(int32_t initial, int32_t final) override;
+  */
+  void TakeSnapshot(std::string file_path, int32_t width,
+                    int32_t height) override;
+  void SetVideoWidth(int32_t video_width) override;
+  void SetVideoHeight(int32_t video_height) override;
 
  private:
-  std::unique_ptr<VideoOutput> video_output_;
+  class Impl;
+  std::unique_ptr<Impl> impl_;
 };
-
-class Players {
- public:
-  Player* Create(std::vector<std::string> cmd_arguments = {}) {
-    auto player = std::make_unique<Player>(cmd_arguments);
-    auto ptr = player.get();
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      players_[player->id()] = std::move(player);
-    }
-    return ptr;
-  }
-
-  Player* Get(int64_t id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto it = players_.find(id);
-    if (it != players_.end()) {
-      return it->second.get();
-    }
-    return nullptr;
-  }
-
-  void Dispose(int64_t id) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    players_.erase(id);
-  }
-
- private:
-  std::mutex mutex_;
-  std::map<int64_t, std::unique_ptr<Player>> players_;
-};
-
-extern std::unique_ptr<Players> g_players;
 
 #endif

@@ -1,6 +1,6 @@
 #include "broadcast.h"
 #include "equalizer.h"
-#include "player.h"
+#include "player_registry.h"
 #include "record.h"
 
 // TODO: Reduce amount of ugly global variables

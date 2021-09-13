@@ -1,7 +1,6 @@
 // ignore_for_file: implementation_imports
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:dart_vlc_ffi/src/player.dart' hide Player;
@@ -11,22 +10,22 @@ import 'package:dart_vlc/src/widgets/controls.dart';
 /// Internally used map to keep [GlobalKey]s for [Video]'s [ControlState]s.
 Map<int, GlobalKey<ControlState>> controls = {};
 
-/// Internally used map to keep [StreamController]s for [Video] [Widget]s.
-Map<int, StreamController<VideoFrame>> videoStreamControllers = {};
+final bool hasTextureSupport = Platform.isWindows;
 
-/// Represents a [Video] frame, used for retriving frame through platform channel.
-class VideoFrame {
-  final int playerId;
-  final int videoWidth;
-  final int videoHeight;
-  final Uint8List byteArray;
-
-  VideoFrame({
-    required this.playerId,
-    required this.videoWidth,
-    required this.videoHeight,
-    required this.byteArray,
-  });
+extension ImageExtensions on VideoFrame {
+  Future<ui.Image> toImage() {
+    Completer<ui.Image> imageCompleter = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
+        buffer,
+        width,
+        height,
+        pixelFormat == PixelFormat.kRGBA
+            ? ui.PixelFormat.rgba8888
+            : ui.PixelFormat.bgra8888,
+        (ui.Image _image) => imageCompleter.complete(_image),
+        rowBytes: bytesPerRow);
+    return imageCompleter.future;
+  }
 }
 
 /// Widget for showing [Video] inside the [Widget] tree.
@@ -87,6 +86,9 @@ class Video extends StatefulWidget {
   // Built-In video controls.
   final bool showControls;
 
+  // Background color.
+  final Color? backgroundColor;
+
   // Radius of the progressbar's thumb
   final double? progressBarThumbRadius;
 
@@ -132,6 +134,7 @@ class Video extends StatefulWidget {
     this.alignment: Alignment.center,
     this.scale: 1.0,
     this.showControls: true,
+    this.backgroundColor = Colors.black,
     this.progressBarActiveColor,
     this.progressBarInactiveColor = Colors.white24,
     this.progressBarThumbColor,
@@ -149,7 +152,7 @@ class Video extends StatefulWidget {
   }) : super(key: key);
 
   _VideoStateBase createState() =>
-      Platform.isWindows ? _VideoStateTexture() : _VideoStateFallback();
+      hasTextureSupport ? _VideoStateTexture() : _VideoStateFallback();
 }
 
 abstract class _VideoStateBase extends State<Video> {
@@ -168,7 +171,7 @@ abstract class _VideoStateBase extends State<Video> {
     return Container(
         width: widget.width ?? double.infinity,
         height: widget.height ?? double.infinity,
-        color: Colors.black,
+        color: widget.backgroundColor,
         child: widget.showControls
             ? Control(
                 key: controlKey,
@@ -238,23 +241,19 @@ class _VideoStateTexture extends _VideoStateBase {
   @override
   Future<void> dispose() async {
     _videoDimensionsSubscription?.cancel();
+    if (widget.showControls) {
+      controls.remove(playerId);
+    }
     super.dispose();
   }
 }
 
 class _VideoStateFallback extends _VideoStateBase {
   Widget? videoFrameRawImage;
+  late StreamSubscription _frameSubscription;
 
   Future<RawImage> getVideoFrameRawImage(VideoFrame videoFrame) async {
-    Completer<ui.Image> imageCompleter = Completer<ui.Image>();
-    ui.decodeImageFromPixels(
-        videoFrame.byteArray,
-        videoFrame.videoWidth,
-        videoFrame.videoHeight,
-        ui.PixelFormat.rgba8888,
-        (ui.Image _image) => imageCompleter.complete(_image),
-        rowBytes: 4 * videoFrame.videoWidth);
-    ui.Image image = await imageCompleter.future;
+    final image = await videoFrame.toImage();
 
     return RawImage(
       image: image,
@@ -267,16 +266,14 @@ class _VideoStateFallback extends _VideoStateBase {
 
   @override
   Future<void> dispose() async {
-    await videoStreamControllers[playerId]?.close();
+    _frameSubscription.cancel();
     super.dispose();
   }
 
   @override
   void initState() {
-    videoStreamControllers[playerId] = StreamController<VideoFrame>.broadcast();
-    videoStreamControllers[playerId]
-        ?.stream
-        .listen((VideoFrame videoFrame) async {
+    _frameSubscription =
+        widget.player.videoFrameStream.listen((videoFrame) async {
       videoFrameRawImage = await getVideoFrameRawImage(videoFrame);
       if (mounted) setState(() {});
     });
