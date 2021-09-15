@@ -102,6 +102,7 @@ void PixelBufferOutput::Impl::Reset() {
 void PixelBufferOutput::Impl::SendEmptyFrame() {
   void* buffer;
   auto user_data = delegate_->LockBuffer(&buffer, current_dimensions_);
+  assert(buffer);
   memset(buffer, 0,
          current_dimensions_.bytes_per_row * current_dimensions_.height);
   delegate_->UnlockBuffer(user_data);
@@ -116,7 +117,9 @@ void PixelBufferOutput::Impl::SetDimensions(VideoDimensions& dimensions) {
 }
 
 void* PixelBufferOutput::Impl::OnVideoLock(void** planes) {
-  return delegate_->LockBuffer(&planes[0], current_dimensions_);
+  auto user_data = delegate_->LockBuffer(&planes[0], current_dimensions_);
+  assert(planes[0]);
+  return user_data;
 }
 
 void PixelBufferOutput::Impl::OnVideoUnlock(void* user_data,

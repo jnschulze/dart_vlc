@@ -51,6 +51,7 @@ struct EventEnvelope {
   Dart_CObject type_object;
   Dart_CObject payload_object{};
   std::array<Dart_CObject*, 3> elements;
+  std::array<Dart_CObject*, 5> values;
   Dart_CObject envelope;
   explicit EventEnvelope(int64_t id, EventType event_type)
       : elements({&id_object, &type_object, &payload_object}) {
@@ -115,12 +116,14 @@ struct PlaylistUpdated : public EventEnvelope {
     resources_object.value.as_array.values =
         property_object_refs.get() + media_item_count;
 
-    Dart_CObject* value_objects[] = {&index_object, &is_playlist_object,
-                                     &types_object, &resources_object};
+    values[0] = &index_object;
+    values[1] = &is_playlist_object;
+    values[2] = &types_object;
+    values[3] = &resources_object;
+
     payload_object.type = Dart_CObject_kArray;
-    payload_object.value.as_array.values = value_objects;
-    payload_object.value.as_array.length =
-        sizeof(value_objects) / sizeof(value_objects[0]);
+    payload_object.value.as_array.values = values.data();
+    payload_object.value.as_array.length = 4;
   }
 };
 
@@ -137,11 +140,12 @@ struct PlaybackStateChanged : public EventEnvelope {
     is_seekable_object.type = Dart_CObject_kBool;
     is_seekable_object.value.as_bool = is_seekable;
 
-    Dart_CObject* value_objects[] = {&state_object, &is_seekable_object};
+    values[0] = &state_object;
+    values[1] = &is_seekable_object;
+
     payload_object.type = Dart_CObject_kArray;
-    payload_object.value.as_array.values = value_objects;
-    payload_object.value.as_array.length =
-        sizeof(value_objects) / sizeof(value_objects[0]);
+    payload_object.value.as_array.values = values.data();
+    payload_object.value.as_array.length = 2;
   }
 };
 
@@ -157,11 +161,12 @@ struct PositionChanged : public EventEnvelope {
     duration_object.type = Dart_CObject_kInt32;
     duration_object.value.as_int32 = duration;
 
-    Dart_CObject* value_objects[] = {&position_object, &duration_object};
+    values[0] = &position_object;
+    values[1] = &duration_object;
+
     payload_object.type = Dart_CObject_kArray;
-    payload_object.value.as_array.values = value_objects;
-    payload_object.value.as_array.length =
-        sizeof(value_objects) / sizeof(value_objects[0]);
+    payload_object.value.as_array.values = values.data();
+    payload_object.value.as_array.length = 2;
   }
 };
 
@@ -193,11 +198,12 @@ struct VideoDimensionsChanged : public EventEnvelope {
     height_object.type = Dart_CObject_kInt32;
     height_object.value.as_int32 = static_cast<int32_t>(height);
 
-    Dart_CObject* value_objects[] = {&width_object, &height_object};
+    values[0] = &width_object;
+    values[1] = &height_object;
+
     payload_object.type = Dart_CObject_kArray;
-    payload_object.value.as_array.values = value_objects;
-    payload_object.value.as_array.length =
-        sizeof(value_objects) / sizeof(value_objects[0]);
+    payload_object.value.as_array.values = values.data();
+    payload_object.value.as_array.length = 2;
   }
 };
 
@@ -230,13 +236,15 @@ struct VideoFrameAvailable : public EventEnvelope {
     bytes_per_row_object.value.as_int32 =
         static_cast<int32_t>(dimensions.bytes_per_row);
 
-    Dart_CObject* value_objects[] = {&buffer_object, &width_object,
-                                     &height_object, &pixel_format_object,
-                                     &bytes_per_row_object};
+    values[0] = &buffer_object;
+    values[1] = &width_object;
+    values[2] = &height_object;
+    values[3] = &pixel_format_object;
+    values[4] = &bytes_per_row_object;
+
     payload_object.type = Dart_CObject_kArray;
-    payload_object.value.as_array.values = value_objects;
-    payload_object.value.as_array.length =
-        sizeof(value_objects) / sizeof(value_objects[0]);
+    payload_object.value.as_array.values = values.data();
+    payload_object.value.as_array.length = 5;
   }
 };
 
